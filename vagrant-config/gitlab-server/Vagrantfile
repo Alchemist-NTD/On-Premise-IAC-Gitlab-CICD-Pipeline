@@ -1,0 +1,80 @@
+Vagrant.configure(2) do |config|
+  
+  config.vm.box = 'bento/ubuntu-20.04'
+  config.vm.provider "virtualbox" do |vb|
+     vb.name = "gitlab-server"
+     vb.cpus = 3
+     vb.memory = "3072"
+  end
+  config.vm.network "private_network", ip: "192.168.56.3"
+	config.vm.network "public_network", bridge: "enp2s0", use_dhcp_assigned_default_route: true
+	config.vm.provision "shell", run: "always", inline: <<-SHELL
+		sudo sed -i '1 s/^.*$/duy-gitlab/' /etc/hostname
+		sudo sed -i '2 s/^.*$/127.0.1.1 gitlab.duy.com/' /etc/hosts
+		sudo mkdir -p /home/app-installed/gitlab-ce
+		sudo apt-get update
+		sudo apt-get upgrade -y
+		sudo apt-get install -y curl openssh-server ca-certificates tzdata perl
+		sudo curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | sudo bash
+		sudo apt-get install -y gitlab-ce
+		sudo gitlab-ctl reconfigure
+		sudo chmod 777 /etc/gitlab/gitlab.rb
+		sudo rm /etc/gitlab/gitlab.rb
+		sudo chmod 777 /etc/gitlab
+		# 775
+		sudo mkdir /home/app-installed/gitlab-ce/certs
+		sudo chmod 777 /home/app-installed/gitlab-ce/certs
+		sudo mkdir /etc/gitlab/ssl
+		# 755
+		sudo mkdir -p /data/{backups,git-data}
+		sudo mkdir /home/app-installed/docker
+		sudo apt-get update
+		sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+		sudo echo \
+				"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+				$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+		sudo apt-get update
+		sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+		sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+		sudo chmod +x /usr/local/bin/docker-compose
+		sudo mkdir -p /home/app-installed/registry/certs/
+		sudo chmod 777 /home/app-installed/registry
+		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5000/
+		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5050/
+SHELL
+
+	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/gitlab.rb", destination: "/etc/gitlab/gitlab.rb"
+	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/ssl/gitlab.duy.com.crt", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt"
+	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/ssl/gitlab.duy.com.key", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.key"
+	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/docker-compose.yml", destination: "/home/app-installed/registry/docker-compose.yml"
+	
+	config.vm.provision "shell", run: "always", inline: <<-SHELL
+		# Next shell section
+		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /etc/gitlab/ssl/
+		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /home/app-installed/registry/certs/
+		sudo chmod 600 /etc/gitlab/gitlab.rb
+		sudo chmod 775 /etc/gitlab
+		sudo chmod 755 /etc/gitlab/ssl
+		sudo chmod 755 /home/app-installed/registry
+		sudo chmod 755 /home/app-installed/gitlab-ce/certs
+		sudo gitlab-ctl reconfigure
+		sudo cd /home/app-installed/registry
+		sudo docker compose up -d
+		sudo cp /etc/gitlab/ssl/gitlab.duy.com.crt /etc/docker/certs.d/gitlab.duy.com:5000/ca.crt
+		sudo cp /etc/gitlab/ssl/gitlab.duy.com.crt /etc/docker/certs.d/gitlab.duy.com:5050/ca.crt
+		sudo systemctl restart docker
+		sudo gitlab-ctl reconfigure
+		sudo gitlab-ctl restart nginx
+		printf 'Duy@03081998\nDuy@03081998\n' | sudo gitlab-rake "gitlab:password:reset[root]"
+		# sudo chmod 600 /etc/gitlab/ssl/gitlab.duy.com.crt && chmod 600 /etc/gitlab/ssl/gitlab.duy.com.key
+		# sudo chmod 600 /etc/gitlab/ssl/gitlab.crt && chmod 600 /etc/gitlab/ssl/gitlab.key
+SHELL
+
+	config.vm.provision "shell", run: "always", inline: <<-SHELL
+		# Next shell section
+		sudo gitlab-ctl status
+		echo "Config  done!"
+SHELL
+
+end
