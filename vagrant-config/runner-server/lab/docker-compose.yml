@@ -5,7 +5,7 @@ services:
     restart: always
     container_name: registry-server
     ports:
-      - "5000:5000"
+      - "443:5000"
     volumes:
       - ./data:/var/lib/registry
       - ./certs:/certs

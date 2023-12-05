@@ -28,36 +28,40 @@ Vagrant.configure(2) do |config|
     sudo gitlab-runner -version
     sudo usermod -aG docker gitlab-runner
     sudo usermod -aG sudo gitlab-runner
-    sudo chmod 777 /etc/sudoers
-    sudo rm /etc/sudoers
+    cat >> /etc/sudoers <<< 'gitlab-runner ALL=(ALL) NOPASSWD: ALL'
     sudo chmod 777 /etc
     sudo chmod 777 /usr/local/share/ca-certificates
     sudo mkdir -p /home/docker-app/registry && chmod -R 777 /home/docker-app/registry && cd /home/docker-app/registry
     sudo mkdir certs data
   SHELL
 
-  config.vm.provision "file", source: "./sudoers", destination: "/etc/sudoers"
-  config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/home/docker-app/registry/certs/rootCA.crt"
-  config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/home/docker-app/registry/certs/rootCA.key"
-  config.vm.provision "file", source: "./ssl/registry.duy.com.crt", destination: "/home/docker-app/registry/certs/registry.duy.com.crt"
-  config.vm.provision "file", source: "./ssl/registry.duy.com.csr", destination: "/home/docker-app/registry/certs/registry.duy.com.csr"
-  config.vm.provision "file", source: "./ssl/registry.duy.com.key", destination: "/home/docker-app/registry/certs/registry.duy.com.key"
-  config.vm.provision "file", source: "./ssl/registry.duy.com.ext", destination: "/home/docker-app/registry/certs/registry.duy.com.ext"
-  config.vm.provision "file", source: "./docker-compose.yml", destination: "/home/docker-app/registry/docker-compose.yml"
-
+  config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
+  config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/tmp/rootCA.key"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.crt", destination: "/tmp/registry.enigma.com.vn.crt"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.csr", destination: "/tmp/registry.enigma.com.vn.csr"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.key", destination: "/tmp/registry.enigma.com.vn.key"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.ext", destination: "/tmp/registry.enigma.com.vn.ext"
+  config.vm.provision "file", source: "./docker-compose.yml", destination: "/tmp/docker-compose.yml"
 
   config.vm.provision "shell", run: "always", inline: <<-SHELL
+    sudo mv /tmp/rootCA.crt /home/docker-app/registry/certs/rootCA.crt
+    sudo mv /tmp/rootCA.key /home/docker-app/registry/certs/rootCA.key
+    sudo mv /tmp/registry.enigma.com.vn.csr /home/docker-app/registry/certs/registry.enigma.com.vn.csr
+    sudo mv /tmp/registry.enigma.com.vn.crt /home/docker-app/registry/certs/registry.enigma.com.vn.crt
+    sudo mv /tmp/registry.enigma.com.vn.key /home/docker-app/registry/certs/registry.enigma.com.vn.key
+    sudo mv /tmp/registry.enigma.com.vn.ext /home/docker-app/registry/certs/registry.enigma.com.vn.ext
+    sudo mv /tmp/docker-compose.yml /home/docker-app/registry/docker-compose.yml
+    cd /home/docker-app/registry/ && sudo docker compose up -d
+    sudo chmod 755 /home/docker-app/registry/certs/*
     sudo cp /home/docker-app/registry/certs/rootCA.crt /usr/local/share/ca-certificates/
-    sudo chmod 440 /etc/sudoers
     sudo chmod 755 /etc
     sudo chmod 755 /usr/local/share/ca-certificates
     sudo update-ca-certificates
-    sudo gitlab-runner register
-    printf 'https:\/\/gitlab.duy.com\/\nGR13489411dFsvUr-qii7ZSZW6-A5\nshell\n' | gitlab-runner register
-    sudo docker
+    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="????" --executor="shell"
     sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
     sudo cp /home/docker-app/registry/certs/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/ca.crt
     sudo systemctl restart docker
+    # printf "1\n1\n" | sudo passwd gitlab-runner
   SHELL
 
 end

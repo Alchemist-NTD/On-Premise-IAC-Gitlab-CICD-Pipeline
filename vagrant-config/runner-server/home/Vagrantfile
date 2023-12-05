@@ -1,0 +1,67 @@
+Vagrant.configure(2) do |config|
+  
+  config.vm.box = 'bento/ubuntu-20.04'
+  config.vm.provider "virtualbox" do |vb|
+     vb.name = "runner-server"
+     vb.cpus = 3
+     vb.memory = "3072"
+  end
+  config.vm.network "private_network", ip: "192.168.56.9"
+	config.vm.network "public_network", ip: "192.168.1.254"
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    sudo sed -i '2 s/^.*$/127.0.1.1 registry.enigma.com.vn\n192.168.1.3 gitlab.enigma.com.vn/' /etc/hosts
+    sudo apt-get update
+    sudo curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | bash
+    sudo apt-get install gitlab-runner
+    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    sudo echo \
+				"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+				$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+    sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    sudo apt-cache madison gitlab-runner
+    sudo gitlab-runner -version
+    sudo usermod -aG docker gitlab-runner
+    sudo usermod -aG sudo gitlab-runner
+    cat >> /etc/sudoers <<< 'gitlab-runner ALL=(ALL) NOPASSWD: ALL'
+    sudo chmod 777 /etc
+    sudo chmod 777 /usr/local/share/ca-certificates
+    sudo mkdir -p /home/docker-app/registry && chmod -R 777 /home/docker-app/registry && cd /home/docker-app/registry
+    sudo mkdir certs data
+  SHELL
+
+  config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
+  config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/tmp/rootCA.key"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.crt", destination: "/tmp/registry.enigma.com.vn.crt"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.csr", destination: "/tmp/registry.enigma.com.vn.csr"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.key", destination: "/tmp/registry.enigma.com.vn.key"
+  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.ext", destination: "/tmp/registry.enigma.com.vn.ext"
+  config.vm.provision "file", source: "./docker-compose.yml", destination: "/tmp/docker-compose.yml"
+
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    sudo mv /tmp/rootCA.crt /home/docker-app/registry/certs/rootCA.crt
+    sudo mv /tmp/rootCA.key /home/docker-app/registry/certs/rootCA.key
+    sudo mv /tmp/registry.enigma.com.vn.csr /home/docker-app/registry/certs/registry.enigma.com.vn.csr
+    sudo mv /tmp/registry.enigma.com.vn.crt /home/docker-app/registry/certs/registry.enigma.com.vn.crt
+    sudo mv /tmp/registry.enigma.com.vn.key /home/docker-app/registry/certs/registry.enigma.com.vn.key
+    sudo mv /tmp/registry.enigma.com.vn.ext /home/docker-app/registry/certs/registry.enigma.com.vn.ext
+    sudo mv /tmp/docker-compose.yml /home/docker-app/registry/docker-compose.yml
+    cd /home/docker-app/registry/ && sudo docker compose up -d
+    sudo chmod 755 /home/docker-app/registry/certs/*
+    sudo cp /home/docker-app/registry/certs/rootCA.crt /usr/local/share/ca-certificates/
+    sudo chmod 755 /etc
+    sudo chmod 755 /usr/local/share/ca-certificates
+    sudo update-ca-certificates
+    sudo gitlab-runner register --non-interactive --url="https://gitlab.enigma.com.vn" --registration-token="GR1348941oEzsPCmVWLGo4gQxCdE-" --executor="shell"
+    sudo mkdir -p /etc/docker/certs.d/registry.enigma.com.vn/
+    sudo cp /home/docker-app/registry/certs/registry.enigma.com.vn.crt /etc/docker/certs.d/registry.enigma.com.vn/ca.crt
+    sudo systemctl restart docker
+    # printf "1\n1\n" | sudo passwd gitlab-runner
+  SHELL
+
+end
