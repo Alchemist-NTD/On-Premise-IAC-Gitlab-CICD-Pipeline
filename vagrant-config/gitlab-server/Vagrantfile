@@ -44,10 +44,10 @@ Vagrant.configure(2) do |config|
 		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5050/
 SHELL
 
-	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/gitlab.rb", destination: "/etc/gitlab/gitlab.rb"
-	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/ssl/gitlab.duy.com.crt", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt"
-	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/ssl/gitlab.duy.com.key", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.key"
-	config.vm.provision "file", source: "/home/vagrant-config/gitlab-server/docker-compose.yml", destination: "/home/app-installed/registry/docker-compose.yml"
+	config.vm.provision "file", source: "./gitlab.rb", destination: "/etc/gitlab/gitlab.rb"
+	config.vm.provision "file", source: "./ssl/gitlab.duy.com.crt", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt"
+	config.vm.provision "file", source: "./ssl/gitlab.duy.com.key", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.key"
+	config.vm.provision "file", source: "./docker-compose.yml", destination: "/home/app-installed/registry/docker-compose.yml"
 	
 	config.vm.provision "shell", run: "always", inline: <<-SHELL
 		# Next shell section
@@ -59,7 +59,7 @@ SHELL
 		sudo chmod 755 /home/app-installed/registry
 		sudo chmod 755 /home/app-installed/gitlab-ce/certs
 		sudo gitlab-ctl reconfigure
-		sudo cd /home/app-installed/registry
+		cd /home/app-installed/registry
 		sudo docker compose up -d
 		sudo cp /etc/gitlab/ssl/gitlab.duy.com.crt /etc/docker/certs.d/gitlab.duy.com:5000/ca.crt
 		sudo cp /etc/gitlab/ssl/gitlab.duy.com.crt /etc/docker/certs.d/gitlab.duy.com:5050/ca.crt

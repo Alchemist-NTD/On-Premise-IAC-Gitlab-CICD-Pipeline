@@ -1,0 +1,63 @@
+Vagrant.configure(2) do |config|
+  
+  config.vm.box = 'bento/ubuntu-20.04'
+  config.vm.provider "virtualbox" do |vb|
+     vb.name = "runner-server"
+     vb.cpus = 3
+     vb.memory = "3072"
+  end
+  config.vm.network "private_network", ip: "192.168.56.9"
+	config.vm.network "public_network", bridge: "enp2s0", use_dhcp_assigned_default_route: true
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    sudo sed -i '2 s/^.*$/127.0.1.1 registry.duy.com/' /etc/hosts
+    sudo sed -i '3 s/^.*$/192.168.56.3 gitlab.duy.com\n/' /etc/hosts
+    sudo apt-get update
+    sudo curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | bash
+    sudo apt-get install gitlab-runner
+    sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    sudo echo \
+				"deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+				$(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    sudo apt-get update
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+    sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    sudo chmod +x /usr/local/bin/docker-compose
+    sudo apt-cache madison gitlab-runner
+    sudo gitlab-runner -version
+    sudo usermod -aG docker gitlab-runner
+    sudo usermod -aG sudo gitlab-runner
+    sudo chmod 777 /etc/sudoers
+    sudo rm /etc/sudoers
+    sudo chmod 777 /etc
+    sudo chmod 777 /usr/local/share/ca-certificates
+    sudo mkdir -p /home/docker-app/registry && chmod -R 777 /home/docker-app/registry && cd /home/docker-app/registry
+    sudo mkdir certs data
+  SHELL
+
+  config.vm.provision "file", source: "./sudoers", destination: "/etc/sudoers"
+  config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/home/docker-app/registry/certs/rootCA.crt"
+  config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/home/docker-app/registry/certs/rootCA.key"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.crt", destination: "/home/docker-app/registry/certs/registry.duy.com.crt"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.csr", destination: "/home/docker-app/registry/certs/registry.duy.com.csr"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.key", destination: "/home/docker-app/registry/certs/registry.duy.com.key"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.ext", destination: "/home/docker-app/registry/certs/registry.duy.com.ext"
+  config.vm.provision "file", source: "./docker-compose.yml", destination: "/home/docker-app/registry/docker-compose.yml"
+
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    sudo cp /home/docker-app/registry/certs/rootCA.crt /usr/local/share/ca-certificates/
+    sudo chmod 440 /etc/sudoers
+    sudo chmod 755 /etc
+    sudo chmod 755 /usr/local/share/ca-certificates
+    sudo update-ca-certificates
+    sudo gitlab-runner register
+    printf 'https:\/\/gitlab.duy.com\/\nGR13489411dFsvUr-qii7ZSZW6-A5\nshell\n' | gitlab-runner register
+    sudo docker
+    sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
+    sudo cp /home/docker-app/registry/certs/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/ca.crt
+    sudo systemctl restart docker
+  SHELL
+
+end
