@@ -37,19 +37,19 @@ Vagrant.configure(2) do |config|
 
   config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
   config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/tmp/rootCA.key"
-  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.crt", destination: "/tmp/registry.enigma.com.vn.crt"
-  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.csr", destination: "/tmp/registry.enigma.com.vn.csr"
-  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.key", destination: "/tmp/registry.enigma.com.vn.key"
-  config.vm.provision "file", source: "./ssl/registry.enigma.com.vn.ext", destination: "/tmp/registry.enigma.com.vn.ext"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.crt", destination: "/tmp/registry.duy.com.crt"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.csr", destination: "/tmp/registry.duy.com.csr"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.key", destination: "/tmp/registry.duy.com.key"
+  config.vm.provision "file", source: "./ssl/registry.duy.com.ext", destination: "/tmp/registry.duy.com.ext"
   config.vm.provision "file", source: "./docker-compose.yml", destination: "/tmp/docker-compose.yml"
 
   config.vm.provision "shell", run: "always", inline: <<-SHELL
     sudo mv /tmp/rootCA.crt /home/docker-app/registry/certs/rootCA.crt
     sudo mv /tmp/rootCA.key /home/docker-app/registry/certs/rootCA.key
-    sudo mv /tmp/registry.enigma.com.vn.csr /home/docker-app/registry/certs/registry.enigma.com.vn.csr
-    sudo mv /tmp/registry.enigma.com.vn.crt /home/docker-app/registry/certs/registry.enigma.com.vn.crt
-    sudo mv /tmp/registry.enigma.com.vn.key /home/docker-app/registry/certs/registry.enigma.com.vn.key
-    sudo mv /tmp/registry.enigma.com.vn.ext /home/docker-app/registry/certs/registry.enigma.com.vn.ext
+    sudo mv /tmp/registry.duy.com.csr /home/docker-app/registry/certs/registry.duy.com.csr
+    sudo mv /tmp/registry.duy.com.crt /home/docker-app/registry/certs/registry.duy.com.crt
+    sudo mv /tmp/registry.duy.com.key /home/docker-app/registry/certs/registry.duy.com.key
+    sudo mv /tmp/registry.duy.com.ext /home/docker-app/registry/certs/registry.duy.com.ext
     sudo mv /tmp/docker-compose.yml /home/docker-app/registry/docker-compose.yml
     cd /home/docker-app/registry/ && sudo docker compose up -d
     sudo chmod 755 /home/docker-app/registry/certs/*
@@ -57,7 +57,7 @@ Vagrant.configure(2) do |config|
     sudo chmod 755 /etc
     sudo chmod 755 /usr/local/share/ca-certificates
     sudo update-ca-certificates
-    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="????" --executor="shell"
+    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="GR1348941DUzHPUct_xmphThWx5nm" --executor="shell"
     sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
     sudo cp /home/docker-app/registry/certs/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/ca.crt
     sudo systemctl restart docker

@@ -3,5 +3,5 @@
 cd ./vagrant-config/gitlab-server/
 vagrant halt
 cd ./vagrant-config/gitlab-server/
-cd ../runner-server/
+cd ../runner-server/lab/
 vagrant halt

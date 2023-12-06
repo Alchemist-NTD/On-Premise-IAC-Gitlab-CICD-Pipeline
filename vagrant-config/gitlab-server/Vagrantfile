@@ -10,7 +10,7 @@ Vagrant.configure(2) do |config|
 	config.vm.network "public_network", bridge: "enp2s0", use_dhcp_assigned_default_route: true
 	config.vm.provision "shell", run: "always", inline: <<-SHELL
 		sudo sed -i '1 s/^.*$/duy-gitlab/' /etc/hostname
-		sudo sed -i '2 s/^.*$/127.0.1.1 gitlab.duy.com/' /etc/hosts
+		sudo sed -i '2 s/^.*$/127.0.1.1 gitlab.duy.com\n192.168.56.9 registry.duy.com\n/' /etc/hosts
 		sudo mkdir -p /home/app-installed/gitlab-ce
 		sudo apt-get update
 		sudo apt-get upgrade -y
@@ -18,10 +18,7 @@ Vagrant.configure(2) do |config|
 		sudo curl -sS https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | sudo bash
 		sudo apt-get install -y gitlab-ce
 		sudo gitlab-ctl reconfigure
-		sudo chmod 777 /etc/gitlab/gitlab.rb
-		sudo rm /etc/gitlab/gitlab.rb
-		sudo chmod 777 /etc/gitlab
-		# 775
+
 		sudo mkdir /home/app-installed/gitlab-ce/certs
 		sudo chmod 777 /home/app-installed/gitlab-ce/certs
 		sudo mkdir /etc/gitlab/ssl
@@ -44,16 +41,25 @@ Vagrant.configure(2) do |config|
 		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5050/
 SHELL
 
-	config.vm.provision "file", source: "./gitlab.rb", destination: "/etc/gitlab/gitlab.rb"
-	config.vm.provision "file", source: "./ssl/gitlab.duy.com.crt", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt"
-	config.vm.provision "file", source: "./ssl/gitlab.duy.com.key", destination: "/home/app-installed/gitlab-ce/certs/gitlab.duy.com.key"
-	config.vm.provision "file", source: "./docker-compose.yml", destination: "/home/app-installed/registry/docker-compose.yml"
+	config.vm.provision "file", source: "./gitlab.rb", destination: "/tmp/gitlab.rb"
+	config.vm.provision "file", source: "./ssl/gitlab.duy.com.crt", destination: "/tmp/gitlab.duy.com.crt"
+	config.vm.provision "file", source: "./ssl/gitlab.duy.com.key", destination: "/tmp/gitlab.duy.com.key"
+	config.vm.provision "file", source: "./docker-compose.yml", destination: "/tmp/docker-compose.yml"
+	config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
 	
 	config.vm.provision "shell", run: "always", inline: <<-SHELL
-		# Next shell section
+		sudo chmod 777 /etc/gitlab/gitlab.rb
+		sudo rm /etc/gitlab/gitlab.rb
+		sudo cp /tmp/gitlab.rb /etc/gitlab/
+		sudo chmod 600 /etc/gitlab/gitlab.rb
+		
+		sudo cp /tmp/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/
+		sudo cp /tmp/gitlab.duy.com.key /home/app-installed/gitlab-ce/certs/
+		sudo cp /tmp/docker-compose.yml /home/app-installed/registry/
+		
 		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /etc/gitlab/ssl/
 		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /home/app-installed/registry/certs/
-		sudo chmod 600 /etc/gitlab/gitlab.rb
+		
 		sudo chmod 775 /etc/gitlab
 		sudo chmod 755 /etc/gitlab/ssl
 		sudo chmod 755 /home/app-installed/registry
