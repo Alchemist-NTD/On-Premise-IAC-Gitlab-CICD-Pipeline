@@ -20,9 +20,7 @@ Vagrant.configure(2) do |config|
 		sudo gitlab-ctl reconfigure
 
 		sudo mkdir /home/app-installed/gitlab-ce/certs
-		sudo chmod 777 /home/app-installed/gitlab-ce/certs
 		sudo mkdir /etc/gitlab/ssl
-		# 755
 		sudo mkdir -p /data/{backups,git-data}
 		sudo mkdir /home/app-installed/docker
 		sudo apt-get update
@@ -36,7 +34,6 @@ Vagrant.configure(2) do |config|
 		sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 		sudo chmod +x /usr/local/bin/docker-compose
 		sudo mkdir -p /home/app-installed/registry/certs/
-		sudo chmod 777 /home/app-installed/registry
 		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5000/
 		sudo mkdir -p /etc/docker/certs.d/gitlab.duy.com:5050/
 SHELL
@@ -48,22 +45,12 @@ SHELL
 	config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
 	
 	config.vm.provision "shell", run: "always", inline: <<-SHELL
-		sudo chmod 777 /etc/gitlab/gitlab.rb
-		sudo rm /etc/gitlab/gitlab.rb
-		sudo cp /tmp/gitlab.rb /etc/gitlab/
-		sudo chmod 600 /etc/gitlab/gitlab.rb
-		
+		yes | sudo cp -rf /tmp/gitlab.rb /etc/gitlab/
 		sudo cp /tmp/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/
 		sudo cp /tmp/gitlab.duy.com.key /home/app-installed/gitlab-ce/certs/
 		sudo cp /tmp/docker-compose.yml /home/app-installed/registry/
-		
 		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /etc/gitlab/ssl/
 		sudo cp /home/app-installed/gitlab-ce/certs/gitlab.duy.com.crt /home/app-installed/gitlab-ce/certs/gitlab.duy.com.key /home/app-installed/registry/certs/
-		
-		sudo chmod 775 /etc/gitlab
-		sudo chmod 755 /etc/gitlab/ssl
-		sudo chmod 755 /home/app-installed/registry
-		sudo chmod 755 /home/app-installed/gitlab-ce/certs
 		sudo gitlab-ctl reconfigure
 		cd /home/app-installed/registry
 		sudo docker compose up -d
@@ -72,13 +59,16 @@ SHELL
 		sudo systemctl restart docker
 		sudo gitlab-ctl reconfigure
 		sudo gitlab-ctl restart nginx
-		printf 'Duy@03081998\nDuy@03081998\n' | sudo gitlab-rake "gitlab:password:reset[root]"
-		# sudo chmod 600 /etc/gitlab/ssl/gitlab.duy.com.crt && chmod 600 /etc/gitlab/ssl/gitlab.duy.com.key
-		# sudo chmod 600 /etc/gitlab/ssl/gitlab.crt && chmod 600 /etc/gitlab/ssl/gitlab.key
+		printf 'duy12345\nduy12345\n' | sudo gitlab-rake "gitlab:password:reset[root]"
+		sudo cp /tmp/rootCA.crt /usr/local/share/ca-certificates/
+		sudo update-ca-certificates
+		printf 'user=User.create();user.name="nguyen thanh duy";user.username="duynt";user.password="duy03081998";user.email="duy.nt@zinza.com.vn";user.confirmed_at="01/01/2024";user.admin=false;user.save!;user=User.find_by(username:'root');\nexit\n' | sudo gitlab-rails console
+		printf 'user = User.find_by(username:"duynt");token=user.personal_access_tokens.create(scopes:["api", "read_repository", "read_user"],name:"project_token",expires_at:365.days.from_now);token.set_token("duynt381998");token.save!;\nexit\n' | sudo gitlab-rails console
+		sudo curl -k --request POST --header 'PRIVATE-TOKEN: duynt381998' --header 'Content-Type: application/json' --data  '{"name": "enigma-furniture-backend", "description": "backend part of enigma project","namespace": "duynt", "initialize_with_readme": "true"}' --url 'https://gitlab.duy.com/api/v4/projects/'
+		sudo curl -k --request POST --header 'PRIVATE-TOKEN: duynt381998' --header 'Content-Type: application/json' --data '{"title":"duy ssh key","key":"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCZ0XFILrrbDaoSNeJLTM3EaEsW8LdX2OwXnMZf49R/4CSV703QDB8+JldeH9WBzTn3gpnz+wkOC36f2+lRnx3GH/Y3hty+m0ECmuVyrdvcdJk6Kmc3kHOGpo8zTzruzKo3eRo1s+8g2mg/81TiLvajRevXf5d1IhFSeo8PIYQ/wyyuIN505FTcpZ8qGSyX7t3JWGr7w8k29HUcBMVqvHLa6aqql23pS7DWDsX5olFPPiXtPZnLE5U60cmw/eQyi1BYYyIb8KS7Y5zrGOI12S7b7K6YHlFtiHcKB0v2Zo1LaCmMivy89VUqLqL00Gm4FErOdVhSmGGmAUUeXNe/bS9hGizRVIZRs5w/Qd59imL36uc41XQwXzcA11pd3VwCtUgf9CDGg0yOu/tkV0oVrrqHxTImmsY1MQqAAxTtE104e6heHbQnoMTPmzIyegxZfGgtz01a5YhHummbDpbHUmr0jouFTXTsoHwkYq/c36789XrligDQ+j9atbGXH9i5Dh0= duy@duy"}' --url 'https://gitlab.duy.com/api/v4/user/keys'
 SHELL
 
 	config.vm.provision "shell", run: "always", inline: <<-SHELL
-		# Next shell section
 		sudo gitlab-ctl status
 		echo "Config  done!"
 SHELL

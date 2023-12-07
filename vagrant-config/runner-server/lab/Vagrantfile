@@ -29,8 +29,6 @@ Vagrant.configure(2) do |config|
     sudo usermod -aG docker gitlab-runner
     sudo usermod -aG sudo gitlab-runner
     cat >> /etc/sudoers <<< 'gitlab-runner ALL=(ALL) NOPASSWD: ALL'
-    sudo chmod 777 /etc
-    sudo chmod 777 /usr/local/share/ca-certificates
     sudo mkdir -p /home/docker-app/registry && chmod -R 777 /home/docker-app/registry && cd /home/docker-app/registry
     sudo mkdir certs data
   SHELL
@@ -52,12 +50,9 @@ Vagrant.configure(2) do |config|
     sudo mv /tmp/registry.duy.com.ext /home/docker-app/registry/certs/registry.duy.com.ext
     sudo mv /tmp/docker-compose.yml /home/docker-app/registry/docker-compose.yml
     cd /home/docker-app/registry/ && sudo docker compose up -d
-    sudo chmod 755 /home/docker-app/registry/certs/*
     sudo cp /home/docker-app/registry/certs/rootCA.crt /usr/local/share/ca-certificates/
-    sudo chmod 755 /etc
-    sudo chmod 755 /usr/local/share/ca-certificates
     sudo update-ca-certificates
-    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="GR1348941DUzHPUct_xmphThWx5nm" --executor="shell"
+    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="GR1348941Jx3KXzi9gbCddJ3SWf1b" --executor="shell"
     sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
     sudo cp /home/docker-app/registry/certs/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/ca.crt
     sudo systemctl restart docker
