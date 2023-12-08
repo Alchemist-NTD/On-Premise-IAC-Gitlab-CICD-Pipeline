@@ -710,8 +710,8 @@ git_data_dirs({
 #### Change the initial default admin password and shared runner registration tokens.
 ####! **Only applicable on initial setup, changing these settings after database
 ####!   is created and seeded won't yield any change.**
-# gitlab_rails['initial_root_password'] = "password"
-# gitlab_rails['initial_shared_runners_registration_token'] = "token"
+# gitlab_rails['initial_root_password'] = "duy03081998"
+# gitlab_rails['initial_shared_runners_registration_token'] = "duy-gitlab-runner-registration-token"
 
 #### Toggle if root password should be printed to STDOUT during initialization
 # gitlab_rails['display_initial_root_password'] = false

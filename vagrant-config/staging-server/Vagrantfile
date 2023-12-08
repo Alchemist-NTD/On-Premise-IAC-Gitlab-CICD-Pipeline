@@ -8,4 +8,33 @@ Vagrant.configure(2) do |config|
     end
     config.vm.network "private_network", ip: "192.168.56.6"
     config.vm.network "public_network", bridge: "enp2s0", use_dhcp_assigned_default_route: true
+
+    config.vm.provision "file", source: "./ssl/rootCA.crt", destination: "/tmp/rootCA.crt"
+    config.vm.provision "file", source: "./ssl/rootCA.key", destination: "/tmp/rootCA.key"
+    config.vm.provision "file", source: "./ssl/stg.duy.com.key", destination: "/tmp/stg.duy.com.key"
+    config.vm.provision "file", source: "./ssl/stg.duy.com.crt", destination: "/tmp/stg.duy.com.crt"
+    config.vm.provision "file", source: "./ssl/stg.duy.com.csr", destination: "/tmp/stg.duy.com.csr"
+    config.vm.provision "file", source: "./ssl/stg.duy.com.ext", destination: "/tmp/stg.duy.com.ext"
+    config.vm.provision "file", source: "./hosts", destination: "/tmp/hosts"
+
+    config.vm.provision "shell", run: "always", inline: <<-SHELL
+        yes | sudo cp -rf /tmp/hosts /etc/
+        sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        sudo cp /tmp/rootCA.crt /usr/local/share/ca-certificates/
+        sudo update-ca-certificates
+        sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        sudo echo \
+            "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+        sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        sudo mkdir -p /home/sshkey/registry.duy.com/
+        sudo scp vagrant@registry.duy.com:/home/docker-app/registry/certs/registry.duy.com.crt /home/sshkey/registry.duy.com/
+        sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
+        sudo cp /home/sshkey/registry.duy.com/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/registry.duy.com.crt
+        sudo systemctl restart docker
+    SHELL
+
 end
