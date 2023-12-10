@@ -1,0 +1,14 @@
+version: '3'
+services:
+  registry:
+    image: registry:2
+    restart: always
+    container_name: registry-server
+    ports:
+      - "443:5000"
+    volumes:
+      - ./data:/var/lib/registry
+      - ./certs:/certs
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/registry.enigma.com.vn.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/registry.enigma.com.vn.key
