@@ -1,2 +1,16 @@
 **/.vagrant
 **/ssl
+**/runner-ssl
+*.log
+**/.terraform
+**/*.backup
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
