@@ -52,13 +52,13 @@ Vagrant.configure(2) do |config|
     cd /home/docker-app/registry/ && sudo docker compose up -d
     sudo cp /home/docker-app/registry/certs/rootCA.crt /usr/local/share/ca-certificates/
     sudo update-ca-certificates
-    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="GR1348941n-RFYghz_ywnLXnaRKxx" --executor="shell"
+    sudo gitlab-runner register --non-interactive --url="https://gitlab.duy.com" --registration-token="GR13489417ca1f45Wh97sytq2FGe-" --executor="shell"
     sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
     sudo cp /home/docker-app/registry/certs/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/ca.crt
     sudo systemctl restart docker
-    # printf "1\n1\n" | sudo passwd gitlab-runner
-    # yes | ssh gitlab-runner@registry.duy.com
+    # echo 1 | echo 1 | sudo passwd gitlab-runner
+    # echo 1 | yes | ssh gitlab-runner@registry.duy.com
     # ssh-keygen -t rsa
-    # echo 1 | yes | ssh-copy-id vagrant@stg.duy.com
+    # echo vagrant | yes | ssh-copy-id vagrant@stg.duy.com
   SHELL
 end

@@ -31,9 +31,11 @@ Vagrant.configure(2) do |config|
         sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
         sudo mkdir -p /home/sshkey/registry.duy.com/
-        sudo scp vagrant@registry.duy.com:/home/docker-app/registry/certs/registry.duy.com.crt /home/sshkey/registry.duy.com/
+        echo "vagrant" | yes | sudo scp vagrant@registry.duy.com:/home/docker-app/registry/certs/registry.duy.com.crt /home/sshkey/registry.duy.com/
         sudo mkdir -p /etc/docker/certs.d/registry.duy.com/
+        sudo mkdir -p /etc/docker/certs.d/stg.duy.com/
         sudo cp /home/sshkey/registry.duy.com/registry.duy.com.crt /etc/docker/certs.d/registry.duy.com/registry.duy.com.crt
+        sudo cp /tmp/stg.duy.com.crt /etc/docker/certs.d/stg.duy.com/stg.duy.com.crt
         sudo systemctl restart docker
     SHELL
 
