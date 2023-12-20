@@ -1,0 +1,84 @@
+NUM_WORKER_NODE = 2
+
+IP_NW = "192.168.56."
+MASTER_IP_START = 11
+NODE_IP_START = 20
+
+def setup_dns(node)
+    node.vm.provision "setup-hosts", :type => "shell", :path => "./setup-hosts.sh" do |s|
+      s.args = ["enp0s8", node.vm.hostname]
+    end
+    node.vm.provision "setup-dns", type: "shell", :path => "./update-dns.sh"
+end
+
+def provision_kubernetes_node(node)
+    setup_dns node
+    node.vm.provision "setup-ssh", :type => "shell", :path => "./ssh.sh"
+    node.vm.provision "setup-ssh", :type => "shell", :path => "./forwarding-traffic.sh"
+end
+
+Vagrant.configure("2") do |config|
+    config.vm.box = "bento/ubuntu-20.04"
+    config.vm.boot_timeout = 900
+    config.vm.box_check_update = false
+
+    config.vm.define "kubemaster" do |node|
+        node.vm.provider "virtualbox" do |vb|
+          vb.name = "kubemaster"
+          vb.memory = 2048
+          vb.cpus = 2
+        end
+        node.vm.hostname = "kubemaster"
+        node.vm.network :private_network, ip: IP_NW + "#{MASTER_IP_START}"
+        node.vm.network "forwarded_port", guest: 22, host: "#{2710}"
+        provision_kubernetes_node node
+        node.vm.provision "file", source: "./tmux.conf", destination: "$HOME/.tmux.conf"
+        node.vm.provision "file", source: "./vimrc", destination: "$HOME/.vimrc"
+        node.vm.provision "shell", run: "always", inline: <<-SHELL
+            sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release net-tools
+            sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+            sudo echo \
+                "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+                $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install -y containerd.io
+            sudo mkdir -p /etc/containerd
+            sudo containerd config default | sudo tee /etc/containerd/config.toml
+            sudo sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
+        SHELL
+    end
+
+    (1..NUM_WORKER_NODE).each do |i|
+        config.vm.define "kubenode0#{i}" do |node|
+          node.vm.provider "virtualbox" do |vb|
+            vb.name = "kubenode0#{i}"
+            vb.memory = 2048
+            vb.cpus = 2
+          end
+          node.vm.hostname = "kubenode0#{i}"
+          node.vm.network :private_network, ip: IP_NW + "#{NODE_IP_START + i}"
+          node.vm.network "forwarded_port", guest: 22, host: "#{2720 + i}"
+          provision_kubernetes_node node
+          node.vm.provision "shell", run: "always", inline: <<-SHELL
+                sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release net-tools
+                sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+                sudo echo \
+                    "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+                    $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                sudo apt-get update
+                sudo apt-get install -y containerd.io
+                sudo mkdir -p /etc/containerd
+                sudo containerd config default | sudo tee /etc/containerd/config.toml
+                sudo sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
+                sudo systemctl restart containerd
+                sudo apt-get update
+                sudo curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg
+                sudo echo 'deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+                sudo apt-get update
+                sudo apt-get install -y kubelet kubeadm kubectl
+                sudo apt-mark hold kubelet kubeadm kubectl
+                sudo swapoff -a && sudo systemctl restart kubelet.service
+            SHELL
+        end
+    end
+end

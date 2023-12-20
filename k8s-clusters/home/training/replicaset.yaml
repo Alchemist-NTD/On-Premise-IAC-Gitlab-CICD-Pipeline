@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: new-replica-set
+spec:
+  template:
+    metadata:
+      name: busybox
+      labels:
+        name: busybox-pod
+    spec:
+      containers:
+        - name: busybox-container
+          image: busybox
+  replicas: 4
+  selector:
+    matchLabels:
+      name: busybox-pod
