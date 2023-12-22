@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "django-and-posgresql.fullname" . }}
+  labels:
+    {{- include "django-and-posgresql.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "django-and-posgresql.selectorLabels" . | nindent 4 }}
